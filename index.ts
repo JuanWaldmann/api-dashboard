@@ -1,6 +1,6 @@
 import './loadenv.ts'
 import express, {type Express, type Request, type Response, type NextFunction} from 'express';
-import { getRepo } from './services/github.ts';
+import { getRepo, getUserRepos } from './services/github.ts';
 
 
 
@@ -12,10 +12,18 @@ const router = express.Router();
 router.get('/repos/:user/:repo', async (req: Request, res: Response) =>{
     const user = req.params.user
     const repo = req.params.repo
-
     const result = await getRepo(user, repo);
-
     res.send(result)
+})
+
+router.get('/users/:user/repos', async (req: Request, res: Response)=> {
+    const user = req.params.user
+    const page = req.query.page
+    const perPage = req.query.per_page
+
+    const resultPaginated = await getUserRepos(user, page, perPage)
+    res.send(resultPaginated)
+
 })
 
 app.use('/api/github', router);
