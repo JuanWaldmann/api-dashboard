@@ -43,12 +43,27 @@ export async function getUserRepos(username: string, page = 1, perPage = 1){
     
 }
 
-
-export function getNextPageUrl(linkHeader: string | null): string | null {
-      if (!linkHeader) {
+function extractRelUrl(linkHeader: string | null, rel: string): string | null {
+  if (!linkHeader){
     return null;
   }
-
-  const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+  const match = linkHeader.match(new RegExp(`<([^>]+)>;\\s*rel="${rel}"`));
   return match ? match[1] : null;
+}
+
+
+export function getNextPageUrl(linkHeader: string | null): string | null {
+  return extractRelUrl(linkHeader, 'next')
+}
+
+export function getPrevPageUrl(linkHeader: string | null): string | null {
+  return extractRelUrl(linkHeader, 'prev')
+}
+
+export function getFirstPageUrl(linkHeader: string | null): string | null {
+  return extractRelUrl(linkHeader, 'first')
+}
+
+export function getlastPageUrl(linkHeader: string | null): string | null {
+  return extractRelUrl(linkHeader, 'last')
 }
