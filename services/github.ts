@@ -27,6 +27,31 @@ function getRateLimitInfo(response: Response): RateLimitInfo {
   };
 }
 
+function isRetryable(status: number): boolean {
+  return status >= 500 && status < 600;
+}
+function wait(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(fetchAttempt: () => Promise<Response>, maxAttempts = 5): Promise <Response>{
+  for (let attempt = 0; attempt < maxAttempts; attempt++){
+    const response = await fetchAttempt();
+
+    if(!isRetryable(response.status)){
+      return response;
+    }
+
+    if (attempt === maxAttempts -1){
+      return response;
+    }
+
+    await wait(1000 * 2 ** attempt);
+  }
+  throw new Error('fetchWithRetry: unreachable');
+}
+ 
+
 
 /**
  * Fetches a single repository's details from the GitHub API.
@@ -35,9 +60,9 @@ export async function getRepo(user: string, repo: string) {
   const url = `https://api.github.com/repos/${user}/${repo}`;
 
   try {
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${GITHUB_SECRET}` }
-    });
+    const response = await fetchWithRetry(() => fetch(url,
+      { headers: { Authorization: `Bearer ${GITHUB_SECRET}` }
+    }));
 
     const repoData = await response.json();
 
