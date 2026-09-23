@@ -1,3 +1,5 @@
+import { fetchWithRetry, checkResponseOk } from "./httpUtils.ts";
+
 const GITHUB_SECRET = process.env.GITHUB_SECRET;
 
 if (!GITHUB_SECRET) {
@@ -26,30 +28,6 @@ function getRateLimitInfo(response: Response): RateLimitInfo {
     resetInMinutes
   };
 }
-
-function isRetryable(status: number): boolean {
-  return status >= 500 && status < 600;
-}
-function wait(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function fetchWithRetry(fetchAttempt: () => Promise<Response>, maxAttempts = 5): Promise <Response>{
-  for (let attempt = 0; attempt < maxAttempts; attempt++){
-    const response = await fetchAttempt();
-
-    if(!isRetryable(response.status)){
-      return response;
-    }
-
-    if (attempt === maxAttempts -1){
-      return response;
-    }
-
-    await wait(1000 * 2 ** attempt);
-  }
-  throw new Error('fetchWithRetry: unreachable');
-}
  
 
 
@@ -64,6 +42,8 @@ export async function getRepo(user: string, repo: string) {
       { headers: { Authorization: `Bearer ${GITHUB_SECRET}` }
     }));
 
+    checkResponseOk(response);
+    
     const repoData = await response.json();
 
     return {
@@ -84,9 +64,11 @@ export async function getUserRepos(username: string, page = 1, perPage = 1) {
   const url = `https://api.github.com/users/${username}/repos?per_page=${perPage}&page=${page}`;
 
   try {
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${GITHUB_SECRET}` }
-    });
+    const response = await fetchWithRetry(() => fetch(url, 
+      { headers: { Authorization: `Bearer ${GITHUB_SECRET}` } 
+    }));
+
+    checkResponseOk(response);
 
     const repos = await response.json();
 
@@ -107,7 +89,7 @@ function extractRelUrl(linkHeader: string | null, rel: string): string | null {
     return null;
   }
   const match = linkHeader.match(new RegExp(`<([^>]+)>;\\s*rel="${rel}"`));
-  return match ? match[1] : null;
+  return match ? match[1] ?? null : null;
 }
 
 
@@ -123,6 +105,6 @@ export function getFirstPageUrl(linkHeader: string | null): string | null {
   return extractRelUrl(linkHeader, 'first')
 }
 
-export function getlastPageUrl(linkHeader: string | null): string | null {
+export function getLastPageUrl(linkHeader: string | null): string | null {
   return extractRelUrl(linkHeader, 'last')
 }
