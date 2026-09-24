@@ -1,42 +1,12 @@
 import './loadenv.ts'
-import express, {type Express, type Request, type Response, type NextFunction} from 'express';
-import { getRepo, getUserRepos } from './services/github.ts';
-
+import express, {type Express} from 'express';
+import combinedRouter from './routes/routes.ts';
 
 
 const app: Express = express();
 const port = 3000;
-const router = express.Router();
 
-
-router.get('/repos/:user/:repo', async (req: Request, res: Response) => {
-    const user = req.params.user
-    const repo = req.params.repo
-
-    if (typeof user !== 'string' || typeof repo !== 'string') {
-    res.status(400).send('Missing user or repo');
-    return;
-}
-    const result = await getRepo(user, repo);
-    res.send(result)
-})
-
-router.get('/users/:user/repos', async (req: Request, res: Response) => {
-    const user = req.params.user
-    const page = typeof req.query.page === 'string' ? Number(req.query.page) : undefined
-    const perPage = typeof req.query.per_page === 'string' ? Number(req.query.per_page) : undefined
-
-    if (typeof user !== 'string') {
-    res.status(400).send('Missing user');
-    return;
-}
-
-    const resultPaginated = await getUserRepos(user, page, perPage)
-    res.send(resultPaginated)
-
-})
-
-app.use('/api/github', router);
+app.use('/api', combinedRouter);
 
 app.listen (port, ()=> {
     console.log(`App listening on port ${port}`)
