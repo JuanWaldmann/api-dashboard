@@ -1,6 +1,10 @@
 import { checkResponseOk, fetchWithRetry } from "./httpUtils.ts";
 
-const OPENWEATHER_SECRET = process.env.OPENWEATHER_APIKEY;
+const OPENWEATHER_APIKEY = process.env.OPENWEATHER_APIKEY;
+
+if (!OPENWEATHER_APIKEY) {
+  throw new Error('OPENWEATHER_APIKEY is not set');
+}
 
 interface apiRaw {
   dt: number;
@@ -17,8 +21,15 @@ interface forecastDay {
     wind: number;
 }
 
+function buildOpenWeatherUrl(type: 'weather' | 'forecast', lat = -34, lon = -58 , units = 'metric', lang = 'es', cnt?: number){
+    return `https://api.openweathermap.org/data/2.5/${type}?lat=${lat}&lon=${lon}&units=${units}&lang=${lang}${cnt !== undefined ? `&cnt=${cnt}` : ''}&appid=${OPENWEATHER_APIKEY}`;
+}
+
+
+
+
 export async function getCurrentWeather(lat = -34, lon = -58 , units = 'metric', lang = 'es'){
-    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=${units}&lang=${lang}&appid=${OPENWEATHER_SECRET}`;
+    const url = buildOpenWeatherUrl('weather', lat, lon, units, lang)
 
     try {
         const response = await fetchWithRetry(()=> fetch(url));
@@ -42,7 +53,7 @@ export async function getCurrentWeather(lat = -34, lon = -58 , units = 'metric',
 
 
 export async function getForecast(lat = -34, lon = -58 , units = 'metric', lang = 'es', cnt = 40): Promise<forecastDay[]> {
-    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=${units}&lang=${lang}&cnt=${cnt}&appid=${OPENWEATHER_SECRET}`;
+    const url = buildOpenWeatherUrl('forecast', lat, lon, units, lang, cnt)
     try{
         const response = await fetchWithRetry(()=> fetch(url));
 
@@ -51,16 +62,17 @@ export async function getForecast(lat = -34, lon = -58 , units = 'metric', lang 
     const dataResponse = await response.json()
         const result = dataResponse.list.filter(
             (element: apiRaw) => {
-                let dtHour = new Date(element.dt * 1000).getUTCHours()
+                const dtHour = new Date(element.dt * 1000).getUTCHours()
                 if (dtHour === 12) return true
+                else return false
             })
 
             const forecast = result.map((element: apiRaw)=> {
-                let forecastedDate = new Date(element.dt * 1000).toLocaleString('en-US', { day: '2-digit', month: 'long', timeZone: 'UTC' })
-                let minTemp = element.main.temp_min
-                let maxTemp = element.main.temp_max
-                let description = element.weather[0]?.description ?? 'Unknown';
-                let wind = element.wind.speed
+                const forecastedDate = new Date(element.dt * 1000).toLocaleString('en-US', { day: '2-digit', month: 'long', timeZone: 'UTC' })
+                const minTemp = element.main.temp_min
+                const maxTemp = element.main.temp_max
+                const description = element.weather[0]?.description ?? 'Unknown';
+                const wind = element.wind.speed
                 return { forecastedDate, minTemp, maxTemp, description, wind }
             })
 
