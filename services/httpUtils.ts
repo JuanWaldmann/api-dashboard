@@ -1,6 +1,20 @@
+export class StatusErrorCode extends Error  {
+  errorCode: number;
+  constructor(message: string, errorCode: number){
+    super(message);
+    this.name = 'StatusErrorCode'
+    this.errorCode = errorCode
+  }
+}
+
+
 export function checkResponseOk(response: Response): void {
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+    if(response.status === 401 || response.status === 403){
+      console.error(response.statusText, response.status)
+      throw new StatusErrorCode(`Upstream Service Error`, 502);
+    }
+    throw new StatusErrorCode(`API error: ${response.statusText}`, response.status);
   }
 }
 

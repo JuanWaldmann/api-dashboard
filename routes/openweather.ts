@@ -1,5 +1,5 @@
 import express, {type Request, type Response} from 'express';
-
+import { StatusErrorCode } from '../services/httpUtils.ts';
 import { getCurrentWeather, getForecast} from '../services/openweather.ts';
 
 const router = express.Router();
@@ -14,15 +14,33 @@ function parseWeatherQuery(req: Request){
 }
 
 router.get('/weather', async (req: Request, res: Response) => {
+    try{
     const { lat, lon, units, lang } = parseWeatherQuery(req);
     const result = await getCurrentWeather(lat, lon, units, lang);
     res.send(result)
+    } catch (err){
+    if (err instanceof StatusErrorCode){
+    res.status(err.errorCode).send(err.message)}
+    else {
+        res.status(500).send('Oops, Something went wrong')
+        console.error(err)
+    }
+    }
 })
 
 router.get('/forecast', async (req: Request, res: Response) => {
+    try{
     const { lat, lon, units, lang, cnt } = parseWeatherQuery(req);
     const result = await getForecast(lat, lon, units, lang, cnt);
     res.send(result)
+}catch (err){
+if (err instanceof StatusErrorCode){
+    res.status(err.errorCode).send(err.message)}
+    else {
+        res.status(500).send('Oops, Something went wrong')
+        console.error(err)
+    }
+}
 })
 
 
